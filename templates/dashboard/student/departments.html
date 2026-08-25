@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Departments — UTAS</title>
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+</head>
+<body>
+<div class="app-wrapper">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">
+        <div class="brand-icon">
+          <img src="{{ url_for('static', filename='images/utas_logo.png') }}" alt="UTAS logo" />
+        </div>
+        <div class="brand-text">
+          <div class="name">UTAS</div>
+          <div class="sub">Complaint System</div>
+        </div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <a href="{{ url_for('dashboard') }}" class="nav-link">
+        <i class="bi bi-grid-fill"></i> Dashboard
+      </a>
+      <div class="nav-section-label">Admin</div>
+      <a href="{{ url_for('admin_complaints') }}" class="nav-link">
+        <i class="bi bi-inbox-fill"></i> All Complaints
+      </a>
+      <a href="{{ url_for('departments') }}" class="nav-link active">
+        <i class="bi bi-building"></i> Departments
+      </a>
+      <a href="{{ url_for('admin_students') }}" class="nav-link">
+        <i class="bi bi-person-x-fill"></i> Students
+      </a>
+      <a href="{{ url_for('staff_admin') }}" class="nav-link">
+        <i class="bi bi-person-badge-fill"></i> Staff Access
+      </a>
+      <div class="nav-section-label">Account</div>
+      <a href="{{ url_for('settings') }}" class="nav-link">
+        <i class="bi bi-gear-fill"></i> Settings
+      </a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="user-info">
+        <div class="user-avatar" style="background:#1a5276">
+          {% if user.get('passport_photo') %}
+            <img src="{{ url_for('static', filename='uploads/passports/' + user.passport_photo) }}" alt="{{ user.fullname }}"/>
+          {% else %}
+            {{ user.fullname[0].upper() }}
+          {% endif %}
+        </div>
+        <div class="user-details">
+          <div class="u-name">{{ user.fullname.split()[0] }}</div>
+          <div class="u-role">Administrator</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main-content">
+    <div class="topbar">
+      <button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Toggle menu">
+        <i class="bi bi-list-ul"></i>
+      </button>
+      <div class="topbar-title">
+        <i class="bi bi-building" style="color:var(--accent)"></i>
+        Departments
+      </div>
+      <div class="topbar-actions">
+        <span style="font-size:12px;color:var(--text-muted)">{{ user.fullname }}</span>
+        <a href="{{ url_for('logout') }}" class="btn-logout">
+          <i class="bi bi-box-arrow-right"></i> Logout
+        </a>
+      </div>
+    </div>
+
+    <div class="page-body">
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+          <div class="flash-msg flash-{{ cat }}">
+            <i class="bi bi-info-circle"></i> {{ msg }}
+          </div>
+        {% endfor %}
+      {% endwith %}
+
+      <div class="page-header">
+        <h3>Manage Departments</h3>
+        <p>Departments are used to route complaints to the appropriate administrator. — Figure 4.8</p>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start">
+
+        <!-- Departments list -->
+        <div class="content-card">
+          <div class="card-header-bar">
+            <h5><i class="bi bi-list-check"></i> &nbsp;Registered Departments</h5>
+            <span style="font-size:12px;color:var(--text-muted)">
+              {{ depts|length }} departments
+            </span>
+          </div>
+          <div class="card-body-pad">
+            {% if depts %}
+              {% for d in depts %}
+              <div style="display:flex;align-items:center;justify-content:space-between;
+                          padding:10px 0;border-bottom:1px solid var(--border)">
+                <div style="display:flex;flex-direction:column;gap:4px;">
+                  <span class="dept-chip">
+                    <i class="bi bi-building-fill"></i>
+                    {{ d.name }}
+                  </span>
+                  <small style="color:var(--text-muted)">
+                    Primary Admin: {{ d.primary_admin_name or 'Unassigned' }}
+                  </small>
+                  <small style="color:var(--text-muted)">
+                    Sub Admin: {{ d.sub_admin_name or 'Unassigned' }}
+                  </small>
+                </div>
+                <div style="display:flex;gap:8px;align-items:center">
+                  <a href="{{ url_for('edit_department', dept_id=d.id) }}" class="btn-primary-cms" style="font-size:11px;padding:8px 12px;text-decoration:none">
+                    <i class="bi bi-pencil-square"></i> Edit
+                  </a>
+                  <form method="POST"
+                        action="{{ url_for('delete_department', dept_id=d.id) }}">
+                    <button type="submit" class="btn-danger-cms confirm-action"
+                            style="font-size:11px">
+                      <i class="bi bi-trash"></i> Remove
+                    </button>
+                  </form>
+                </div>
+              </div>
+              {% endfor %}
+            {% else %}
+              <div class="empty-state">
+                <i class="bi bi-building"></i>
+                <p>No departments yet.</p>
+              </div>
+            {% endif %}
+          </div>
+        </div>
+
+        <!-- Add department form -->
+        <div class="content-card">
+          <div class="card-header-bar">
+            <h5><i class="bi bi-plus-circle"></i> &nbsp;Add Department</h5>
+          </div>
+          <div class="card-body-pad">
+            {% if error %}
+            <div class="alert-error">
+              <i class="bi bi-exclamation-triangle-fill"></i> {{ error }}
+            </div>
+            {% endif %}
+            {% if edit_mode and editing_department %}
+            <form method="POST" action="{{ url_for('edit_department', dept_id=editing_department.id) }}">
+              <div class="form-group">
+                <label class="form-label">Edit Department Name</label>
+                <input type="text" name="name" class="form-input"
+                       value="{{ editing_department.name }}" required/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Primary Admin</label>
+                <select name="primary_admin_id" class="form-input">
+                  <option value="">Unassigned</option>
+                  {% for admin in admins %}
+                  <option value="{{ admin.id }}" {% if editing_department.primary_admin_id == admin.id %}selected{% endif %}>{{ admin.fullname }} ({{ admin.role }})</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Sub-admin / Manager</label>
+                <select name="sub_admin_id" class="form-input">
+                  <option value="">Unassigned</option>
+                  {% for admin in admins %}
+                  <option value="{{ admin.id }}" {% if editing_department.sub_admin_id == admin.id %}selected{% endif %}>{{ admin.fullname }} ({{ admin.role }})</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center">
+                <button type="submit" class="btn-primary-cms" style="flex:1">
+                  <i class="bi bi-pencil-square"></i> Save Changes
+                </button>
+                <a href="{{ url_for('departments') }}" class="btn-danger-cms" style="text-decoration:none;display:inline-block;text-align:center;flex:1">
+                  Cancel
+                </a>
+              </div>
+            </form>
+            {% else %}
+            <form method="POST" action="{{ url_for('departments') }}">
+              <div class="form-group">
+                <label class="form-label">Department Name</label>
+                <input type="text" name="name" class="form-input"
+                       placeholder="e.g. Registry Office" required/>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Primary Admin</label>
+                <select name="primary_admin_id" class="form-input">
+                  <option value="">Unassigned</option>
+                  {% for admin in admins %}
+                  <option value="{{ admin.id }}">{{ admin.fullname }} ({{ admin.role }})</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Sub-admin / Manager</label>
+                <select name="sub_admin_id" class="form-input">
+                  <option value="">Unassigned</option>
+                  {% for admin in admins %}
+                  <option value="{{ admin.id }}">{{ admin.fullname }} ({{ admin.role }})</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <button type="submit" class="btn-primary-cms" style="width:100%">
+                <i class="bi bi-plus-lg"></i> Add Department
+              </button>
+            </form>
+            {% endif %}
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Complaints — UTAS</title>
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+</head>
+<body>
+<div class="app-wrapper">
+
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">
+        <div class="brand-icon">
+          <img src="{{ url_for('static', filename='images/utas_logo.png') }}" alt="UTAS logo" />
+        </div>
+        <div class="brand-text">
+          <div class="name">UTAS</div>
+          <div class="sub">Complaint System</div>
+        </div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <a href="{{ url_for('dashboard') }}" class="nav-link">
+        <i class="bi bi-grid-fill"></i> Dashboard
+      </a>
+      <a href="{{ url_for('admin_complaints') }}" class="nav-link active">
+        <i class="bi bi-inbox-fill"></i> All Complaints
+      </a>
+      {% if user.role in ['admin', 'registrar'] %}
+      <a href="{{ url_for('departments') }}" class="nav-link">
+        <i class="bi bi-building"></i> Departments
+      </a>
+      {% endif %}
+      <a href="{{ url_for('admin_students') }}" class="nav-link">
+        <i class="bi bi-person-x-fill"></i> Students
+      </a>
+      {% if user.role in ['admin', 'registrar'] %}
+      <a href="{{ url_for('staff_admin') }}" class="nav-link">
+        <i class="bi bi-person-badge-fill"></i> Staff Access
+      </a>
+      {% endif %}
+      <div class="nav-section-label">Account</div>
+      <a href="{{ url_for('settings') }}" class="nav-link">
+        <i class="bi bi-gear-fill"></i> Settings
+      </a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="user-info">
+        <div class="user-avatar">
+          {% if user.get('passport_photo') %}
+            <img src="{{ url_for('static', filename='uploads/passports/' + user.passport_photo) }}" alt="{{ user.fullname }}"/>
+          {% else %}
+            {{ user.fullname[0].upper() }}
+          {% endif %}
+        </div>
+        <div class="user-details">
+          <div class="u-name">{{ user.fullname.split()[0] }}</div>
+          <div class="u-role">{{ user.role }}</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main-content">
+    <div class="topbar">
+      <button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Toggle menu">
+        <i class="bi bi-list-ul"></i>
+      </button>
+      <div class="topbar-title">
+        <i class="bi bi-inbox-fill" style="color:var(--accent)"></i>
+        Manage Complaints
+      </div>
+      <div class="topbar-actions">
+        <span style="font-size:12px;color:var(--text-muted)">{{ user.fullname }}</span>
+        <a href="{{ url_for('logout') }}" class="btn-logout">
+          <i class="bi bi-box-arrow-right"></i> Logout
+        </a>
+      </div>
+    </div>
+
+    <div class="page-body">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+          <div class="flash-msg flash-{{ cat }}">
+            <i class="bi bi-info-circle"></i> {{ msg }}
+          </div>
+        {% endfor %}
+      {% endwith %}
+
+      <div class="page-header">
+        <h3>Complaint Workflow</h3>
+        <p>Review complaints, update status, and assign the next office stage with comments.</p>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-bottom:12px">
+        <a href="{{ url_for('export_complaints', format='csv') }}" class="btn-secondary-cms">Export CSV</a>
+        <a href="{{ url_for('export_complaints', format='excel') }}" class="btn-secondary-cms">Export Excel</a>
+      </div>
+
+      <div class="status-filter-row" style="margin-bottom:16px;">
+        <a href="{{ url_for('admin_complaints') }}" class="status-pill {% if not filters.status %}active{% endif %}">All</a>
+        <a href="{{ url_for('admin_complaints', status='Pending') }}" class="status-pill {% if filters.status == 'Pending' %}active{% endif %}">Pending</a>
+        <a href="{{ url_for('admin_complaints', status='Notify') }}" class="status-pill {% if filters.status == 'Notify' %}active{% endif %}">Notified</a>
+        <a href="{{ url_for('admin_complaints', status='In Progress') }}" class="status-pill {% if filters.status == 'In Progress' %}active{% endif %}">In Progress</a>
+        <a href="{{ url_for('admin_complaints', status='Resolved') }}" class="status-pill {% if filters.status == 'Resolved' %}active{% endif %}">Resolved</a>
+      </div>
+
+      <div class="content-card" style="margin-bottom:20px; padding:16px; background:#f7f9fb; border:1px solid rgba(0,0,0,.06);">
+        <form method="GET" action="{{ url_for('admin_complaints') }}" class="form-row-3" style="gap:12px; align-items:end;">
+          <div class="form-group" style="flex:1; min-width:220px;">
+            <label class="form-label">Keyword</label>
+            <input type="text" name="keyword" value="{{ filters.keyword }}" class="form-input" placeholder="Search subject, complaint text, student" />
+          </div>
+          <div class="form-group" style="flex:1; min-width:180px;">
+            <label class="form-label">Status</label>
+            <select name="status" class="form-select">
+              <option value="">All statuses</option>
+              <option value="Pending" {% if filters.status == 'Pending' %}selected{% endif %}>Pending</option>
+              <option value="Notify" {% if filters.status == 'Notify' %}selected{% endif %}>Notified</option>
+              <option value="In Progress" {% if filters.status == 'In Progress' %}selected{% endif %}>In Progress</option>
+              <option value="Resolved" {% if filters.status == 'Resolved' %}selected{% endif %}>Resolved</option>
+            </select>
+          </div>
+          <div class="form-group" style="flex:1; min-width:180px;">
+            <label class="form-label">Department</label>
+            <select name="department_id" class="form-select">
+              <option value="">All departments</option>
+              {% for d in depts %}
+                <option value="{{ d.id }}" {% if filters.department_id == d.id|string %}selected{% endif %}>{{ d.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="form-group" style="flex:1; min-width:180px;">
+            <label class="form-label">Faculty/School</label>
+            <input type="text" name="faculty" value="{{ filters.faculty }}" class="form-input" placeholder="Faculty/School name" />
+          </div>
+          <div class="form-group" style="flex:0 0 auto;">
+            <button type="submit" class="btn-primary-cms" style="margin-top:4px;">Filter</button>
+          </div>
+        </form>
+      </div>
+
+      {% if complaints %}
+        {% for c in complaints %}
+        <div class="complaint-row-card">
+          <div class="complaint-row-head">
+            <div>
+              <div class="complaint-subject">{{ c.subject }}</div>
+              <div class="complaint-meta">
+                <strong>Student:</strong> {{ c.student_name or 'Anonymous' }}
+                &nbsp;·&nbsp;
+                <strong>Dept:</strong> {{ c.dept_name or 'N/A' }}
+                {% if c.faculty %}
+                  &nbsp;·&nbsp;<strong>School:</strong> {{ c.faculty }}
+                {% endif %}
+                {% if c.program %}
+                  &nbsp;·&nbsp;<strong>Programme:</strong> {{ c.program }}
+                {% endif %}
+                {% if c.nature_of_problem %}
+                  &nbsp;·&nbsp;<strong>Nature:</strong> {{ c.nature_of_problem }}
+                {% endif %}
+                &nbsp;·&nbsp;
+                <strong>Stage:</strong> {{ c.office_stage or c.dept_name or 'N/A' }}
+              </div>
+            </div>
+              <div>
+              {% if c.status == 'Pending' %}
+                <span class="badge-status badge-pending"><i class="bi bi-hourglass"></i> Pending</span>
+              {% elif c.status == 'In Progress' %}
+                <span class="badge-status badge-progress"><i class="bi bi-arrow-repeat"></i> In Progress</span>
+              {% elif c.status == 'Notify' %}
+                <span class="badge-status badge-notify"><i class="bi bi-bell"></i> Notified</span>
+              {% else %}
+                <span class="badge-status badge-resolved"><i class="bi bi-check-circle"></i> Resolved</span>
+              {% endif %}
+              </div>
+              <div style="display:flex;gap:8px;margin-left:12px">
+                <button type="button" class="btn-tertiary" onclick="openRespondModal('{{ c.id }}', {{ c.subject|tojson }}, '{{ c.status }}')">
+                  <i class="bi bi-reply-fill"></i> Reply
+                </button>
+                <button type="button" class="btn-tertiary" onclick="openHistory({{ c.id }})">
+                  <i class="bi bi-clock-history"></i> History
+                </button>
+              </div>
+          </div>
+
+          <div class="complaint-body">
+            <div class="complaint-summary">
+              <div><strong>Priority:</strong> {{ c.priority }}</div>
+              <div><strong>Submitted:</strong> {{ c.created_at|format_datetime('%d %b %Y') }}</div>
+            </div>
+            <div class="complaint-text">{{ c.complaint }}</div>
+            {% if c.attachment %}
+            <div class="complaint-attachment" style="margin-top:12px">
+              <strong>Attachment:</strong>
+              <a href="{{ url_for('static', filename='uploads/letters/' ~ c.attachment) }}"
+                 target="_blank" class="link-primary">
+                View supporting letter
+              </a>
+            </div>
+            {% endif %}
+          </div>
+
+          {% if c.reply %}
+          <div class="complaint-reply">
+            <div class="reply-label"><i class="bi bi-chat-left-text-fill"></i> Last Admin Comment</div>
+            {{ c.reply }}
+            {% if c.reply_date %}
+            <div class="reply-meta">Updated on {{ c.reply_date|format_datetime('%d %b %Y, %H:%M') }}</div>
+            {% endif %}
+          </div>
+          {% endif %}
+
+          <form method="POST" action="{{ url_for('respond_complaint', complaint_id=c.id) }}" class="complaint-action-form">
+            <div class="form-row-2">
+              <div class="form-group">
+                <label class="form-label">Next Status</label>
+                <select name="status" class="form-select">
+                  <option value="Pending" {% if c.status == 'Pending' %}selected{% endif %}>Pending</option>
+                  <option value="Notify" {% if c.status == 'Notify' %}selected{% endif %}>Notified</option>
+                  <option value="In Progress" {% if c.status == 'In Progress' %}selected{% endif %}>In Progress</option>
+                  <option value="Resolved" {% if c.status == 'Resolved' %}selected{% endif %}>Resolved</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Next Workflow Stage</label>
+                <select name="office_stage" class="form-select">
+                  <option value="">Keep current stage</option>
+                  {% for stage in c.workflow_path %}
+                    <option value="{{ stage }}" {% if stage == c.office_stage %}selected{% endif %}>
+                      {{ stage }}
+                    </option>
+                  {% endfor %}
+                </select>
+                <small class="form-help">Advance the complaint through the academic workflow.</small>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Forward to a Different Office</label>
+              <select name="forward_department_id" class="form-select">
+                <option value="">Keep in {{ c.dept_name or 'current office' }}</option>
+                {% for d in depts %}
+                  {% if d.id != c.department_id %}
+                    <option value="{{ d.id }}">{{ d.name }}</option>
+                  {% endif %}
+                {% endfor %}
+              </select>
+              <small class="form-help">Send this complaint to another office if it belongs there instead — they'll gain access to it and lose access here.</small>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Comment / Instructions</label>
+              <textarea name="reply" class="form-textarea" rows="3" placeholder="Write a comment for the student or next office..."></textarea>
+            </div>
+
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+              <button type="submit" class="btn-primary-cms">
+                <i class="bi bi-send-fill"></i> Update Complaint
+              </button>
+              <span style="font-size:12px;color:var(--text-muted)">Leave comment blank to preserve previous reply.</span>
+            </div>
+          </form>
+
+        </div>
+        {% endfor %}
+
+        <div style="margin-top:16px;display:flex;justify-content:center;gap:8px;align-items:center">
+          {% set total_pages = (pagination.total // pagination.per_page) + (1 if pagination.total % pagination.per_page else 0) %}
+          {% if pagination.page > 1 %}
+            <a href="{{ url_for('admin_complaints', page=pagination.page-1) }}" class="btn-secondary-cms">Previous</a>
+          {% endif %}
+          <span style="font-size:13px;color:var(--text-muted)">Page {{ pagination.page }} of {{ total_pages }}</span>
+          {% if pagination.page < total_pages %}
+            <a href="{{ url_for('admin_complaints', page=pagination.page+1) }}" class="btn-secondary-cms">Next</a>
+          {% endif %}
+        </div>
+
+      {% else %}
+        <div class="empty-state">
+          <i class="bi bi-folder-x"></i>
+          <p>No complaints available yet.</p>
+        </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+      <!-- Respond modal -->
+      <div id="respond-modal" class="modal" style="display:none">
+        <div class="modal-panel">
+          <button class="modal-close" onclick="closeRespondModal()">×</button>
+          <h4 id="modal-subject">Respond</h4>
+          <form method="POST" action="" id="modal-form">
+            <input type="hidden" name="complaint_id" id="modal-complaint-id" />
+            <div class="form-group">
+              <label class="form-label">Status</label>
+              <select name="status" id="modal-status" class="form-select">
+                <option value="Pending">Pending</option>
+                <option value="Notify">Notified</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Resolved">Resolved</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Comment</label>
+              <textarea name="reply" id="modal-reply" class="form-textarea" rows="4"></textarea>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+              <button type="button" class="btn-secondary-cms" onclick="closeRespondModal()">Cancel</button>
+              <button type="submit" class="btn-primary-cms">Send Reply</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <!-- History modal -->
+      <div id="history-modal" class="modal" style="display:none">
+        <div class="modal-panel">
+          <button class="modal-close" onclick="closeHistoryModal()">×</button>
+          <h4>Reply History</h4>
+          <div id="history-list" style="max-height:400px;overflow:auto;margin-top:8px"></div>
+          <div style="display:flex;justify-content:flex-end;margin-top:12px">
+            <button class="btn-secondary-cms" onclick="closeHistoryModal()">Close</button>
+          </div>
+        </div>
+      </div>
+
+      <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+      <script>
+        // Wire modal form submit to admin respond endpoint
+        document.getElementById('modal-form').addEventListener('submit', function (e) {
+          e.preventDefault();
+          var id = document.getElementById('modal-complaint-id').value;
+          var status = document.getElementById('modal-status').value;
+          var reply = document.getElementById('modal-reply').value;
+          var form = document.createElement('form');
+          form.method = 'POST';
+          form.action = '/admin/respond/' + id;
+          var s1 = document.createElement('input'); s1.type='hidden'; s1.name='status'; s1.value = status; form.appendChild(s1);
+          var s2 = document.createElement('input'); s2.type='hidden'; s2.name='reply'; s2.value = reply; form.appendChild(s2);
+          document.body.appendChild(form);
+          form.submit();
+        });
+
+        function openHistory(id) {
+          fetch('/admin/feedback_history/' + id)
+            .then(r => r.json())
+            .then(list => {
+              var container = document.getElementById('history-list');
+              container.innerHTML = '';
+              if (!list || !list.length) {
+                container.innerHTML = '<div class="empty-state">No history available.</div>';
+              } else {
+                list.forEach(function (it) {
+                  var el = document.createElement('div');
+                  el.style.padding = '8px';
+                  el.style.borderBottom = '1px solid rgba(0,0,0,.06)';
+                  el.innerHTML = '<div style="font-weight:600">' + (it.admin_name || 'Admin') + ' — <small style="color:var(--text-muted)"> ' + (it.reply_date || '') + '</small></div><div style="margin-top:6px">' + (it.reply || '') + '</div>';
+                  container.appendChild(el);
+                });
+              }
+              var modal = document.getElementById('history-modal'); modal.style.display = 'block';
+            });
+        }
+
+        function closeHistoryModal() { document.getElementById('history-modal').style.display = 'none'; }
+      </script>
+    </body>
+    </html>

@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Staff Access Request — UTAS</title>
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+</head>
+<body class="auth-body">
+
+<div class="auth-card" style="max-width:460px">
+
+  <div class="auth-logo">
+    <div class="logo-circle">
+      <i class="bi bi-person-badge-fill"></i>
+    </div>
+    <h4>Staff / Sub-Admin Access Request</h4>
+    <p>Request an account to respond to complaints for your department</p>
+  </div>
+
+  {% if error %}
+  <div class="alert-error">
+    <i class="bi bi-exclamation-triangle-fill"></i> {{ error }}
+  </div>
+  {% endif %}
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+      <div class="flash-msg flash-{{ cat }}">
+        <i class="bi bi-info-circle"></i> {{ msg }}
+      </div>
+    {% endfor %}
+  {% endwith %}
+
+  <form method="POST" action="{{ url_for('register_staff') }}">
+
+    <div class="form-group">
+      <label class="form-label">Full Name</label>
+      <input type="text" name="fullname" class="form-control"
+             placeholder="e.g. Ama Boateng" required/>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Institutional Email</label>
+      <input type="email" name="email" class="form-control"
+             placeholder="yourID@utas.edu.gh" required/>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Account Type</label>
+      <div class="role-selector">
+        <label class="role-option selected">
+          <input type="radio" name="requested_role" value="manager" checked onchange="toggleRoleFields()"/>
+          <i class="bi bi-building"></i>
+          Department Sub-Admin
+        </label>
+        <label class="role-option" style="{% if not registrar_available %}opacity:.5{% endif %}">
+          <input type="radio" name="requested_role" value="registrar" onchange="toggleRoleFields()" {% if not registrar_available %}disabled{% endif %}/>
+          <i class="bi bi-shield-fill"></i>
+          Registrar
+        </label>
+      </div>
+      {% if not registrar_available %}
+        <small class="form-help">The Registrar position is currently filled or has a pending request.</small>
+      {% else %}
+        <small class="form-help">The Registrar is a single, system-wide office with near-admin access. Only one may be active.</small>
+      {% endif %}
+    </div>
+
+    <div class="form-group" id="department-field">
+      <label class="form-label">Department</label>
+      <select name="department_id" id="department-select" class="form-control" required>
+        <option value="">Select the department you support</option>
+        {% for d in depts %}
+          <option value="{{ d.id }}">{{ d.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input type="password" name="password" class="form-control"
+             placeholder="Minimum 6 characters" required/>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Confirm Password</label>
+      <input type="password" name="confirm_password" class="form-control"
+             placeholder="Re-enter your password" required/>
+    </div>
+
+    <button type="submit" class="btn-auth">
+      <i class="bi bi-send-check-fill"></i> &nbsp;Submit Request
+    </button>
+  </form>
+
+  <p style="font-size:12px;color:var(--text-muted);margin-top:12px">
+    Your request will be reviewed by a system administrator. You'll be able to log in
+    once your account is approved and linked to your department.
+  </p>
+
+  <div class="auth-footer">
+    Already approved? <a href="{{ url_for('login') }}">Login here</a>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script>
+  function toggleRoleFields() {
+    var isManager = document.querySelector('input[name="requested_role"]:checked').value === 'manager';
+    var deptField = document.getElementById('department-field');
+    var deptSelect = document.getElementById('department-select');
+    deptField.style.display = isManager ? '' : 'none';
+    deptSelect.required = isManager;
+  }
+</script>
+</body>
+</html>

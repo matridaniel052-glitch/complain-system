@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login</title>
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+</head>
+<style>
+ 
+</style>
+<body class="auth-body">
+
+<div class="auth-card">
+
+  <!-- Logo / Branding -->
+  <div class="auth-logo">
+    <div class="logo-image">
+      <img src="{{ url_for('static', filename='images/utas_logo.png') }}"
+           alt="UTAS logo"/>
+    </div>
+    <h4>Student Complaint Portal</h4>
+    <p>Student Complaint Management System</p>
+  </div>
+   
+
+  <!-- Error — Figure 4.2: Access Denial -->
+  {% if error %}
+  <div class="alert-error">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    {{ error }}
+  </div>
+  {% endif %}
+
+  <!-- Flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% for cat, msg in messages %}
+      <div class="flash-msg flash-{{ cat }}">
+        <i class="bi bi-info-circle"></i> {{ msg }}
+      </div>
+    {% endfor %}
+  {% endwith %}
+
+  <!-- Login Form — Figure 4.1 -->
+  <form method="POST" action="{{ url_for('login') }}">
+
+    <!-- Role selector -->
+    <div class="form-group">
+      <label class="form-label">Login as</label>
+      <div class="role-selector">
+        <label class="role-option selected">
+          <input type="radio" name="role" value="student" checked/>
+          <i class="bi bi-person-fill"></i>
+          Student
+        </label>
+        <label class="role-option">
+          <input type="radio" name="role" value="admin"/>
+          <i class="bi bi-shield-fill"></i>
+          Administrator / Manager
+        </label>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Institutional Email</label>
+      <input type="email" name="email" class="form-control"
+             placeholder="yourID@utas.edu.gh" required/>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Password</label>
+      <input type="password" name="password" class="form-control"
+             placeholder="Enter your password" required/>
+    </div>
+
+    <button type="submit" class="btn-auth">
+      <i class="bi bi-box-arrow-in-right"></i> &nbsp;Login
+    </button>
+  </form>
+
+  <div class="auth-footer">
+    New student? <a href="{{ url_for('register') }}">Create an account</a>
+    <br/>
+    Department staff? <a href="{{ url_for('register_staff') }}">Request sub-admin access</a>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

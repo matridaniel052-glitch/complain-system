@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard — UTAS</title>
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+</head>
+<body>
+
+<div class="app-wrapper">
+
+  <!-- ══ SIDEBAR ══════════════════════════════════════════════════ -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">
+        <div class="brand-icon">
+          <img src="{{ url_for('static', filename='images/utas_logo.png') }}"
+               alt="UTAS logo"/>
+        </div>
+        <div class="brand-text">
+          <div class="name">UTAS</div>
+          <div class="sub">Complaint System</div>
+        </div>
+      </div>
+    </div>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <a href="{{ url_for('dashboard') }}" class="nav-link active">
+        <i class="bi bi-grid-fill"></i> Dashboard
+      </a>
+
+      {% if user.role == 'student' %}
+        <a href="{{ url_for('submit_complaint') }}" class="nav-link">
+          <i class="bi bi-pencil-square"></i> Lodge Complaint
+        </a>
+        <a href="{{ url_for('my_complaints') }}" class="nav-link">
+          <i class="bi bi-list-ul"></i> My Complaints
+        </a>
+        <a href="{{ url_for('feedback') }}" class="nav-link">
+          <i class="bi bi-chat-text-fill"></i> Feedback
+        </a>
+      {% else %}
+        <div class="nav-section-label">Admin</div>
+        <a href="{{ url_for('admin_complaints') }}" class="nav-link">
+          <i class="bi bi-inbox-fill"></i> All Complaints
+        </a>
+        {% if user.role in ['admin', 'registrar'] %}
+        <a href="{{ url_for('departments') }}" class="nav-link">
+          <i class="bi bi-building"></i> Departments
+        </a>
+        {% endif %}
+        <a href="{{ url_for('admin_students') }}" class="nav-link">
+          <i class="bi bi-person-x-fill"></i> Students
+        </a>
+        {% if user.role in ['admin', 'registrar'] %}
+        <a href="{{ url_for('staff_admin') }}" class="nav-link">
+          <i class="bi bi-person-badge-fill"></i> Staff Access
+        </a>
+        {% endif %}
+      {% endif %}
+
+      <div class="nav-section-label">Account</div>
+      <a href="{{ url_for('settings') }}" class="nav-link">
+        <i class="bi bi-gear-fill"></i> Settings
+      </a>
+    </nav>
+
+    <div class="sidebar-user">
+      <div class="user-info">
+        <div class="user-avatar">
+          {% if user.get('passport_photo') %}
+            <img src="{{ url_for('static', filename='uploads/passports/' + user.passport_photo) }}" alt="{{ user.fullname }}"/>
+          {% else %}
+            {{ user.fullname[0].upper() }}
+          {% endif %}
+        </div>
+        <div class="user-details">
+          <div class="u-name">{{ user.fullname.split()[0] }}</div>
+          <div class="u-role">{{ user.role }}</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+  <!-- ══ END SIDEBAR ══════════════════════════════════════════════════ -->
+
+  <!-- ══ MAIN CONTENT ═════════════════════════════════════════════════ -->
+  <div class="main-content">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Toggle menu">
+        <i class="bi bi-list-ul"></i>
+      </button>
+      <div class="topbar-title">
+        {% if user.role == 'admin' %}
+          <i class="bi bi-shield-fill" style="color:var(--accent)"></i>
+          Admin Dashboard
+        {% else %}
+          <i class="bi bi-grid-fill" style="color:var(--accent)"></i>
+          Student Dashboard
+        {% endif %}
+      </div>
+      <div class="topbar-actions">
+        <span style="font-size:12px;color:var(--text-muted)">
+          {{ user.fullname }}
+        </span>
+        <a href="{{ url_for('logout') }}" class="btn-logout">
+          <i class="bi bi-box-arrow-right"></i> Logout
+        </a>
+      </div>
+    </div>
+
+    <div class="page-body">
+
+      <!-- Flash messages -->
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+          <div class="flash-msg flash-{{ cat }}">
+            <i class="bi bi-info-circle"></i> {{ msg }}
+          </div>
+        {% endfor %}
+      {% endwith %}
+
+      <!-- Page header -->
+      <div class="page-header">
+        <h3>Welcome back, {{ user.fullname.split()[0] }}!</h3>
+        <p>
+          {% if user.role == 'admin' %}
+            Manage and resolve student complaints from your dashboard.
+          {% else %}
+            Track your complaints and view responses from administrators.
+          {% endif %}
+        </p>
+      </div>
+
+      <!-- ── STAT CARDS (Appendix E.1) ── -->
+      <div class="stats-row">
+        <a class="stat-card total" href="{{ url_for('admin_complaints') if user.role == 'admin' else url_for('my_complaints') }}">
+          <div class="stat-icon"><i class="bi bi-collection-fill"></i></div>
+          <div class="stat-info">
+            <div class="s-num">{{ stats.total }}</div>
+            <div class="s-label">Total Complaints</div>
+          </div>
+        </a>
+        <a class="stat-card pending" href="{{ url_for('admin_complaints', status='Pending') if user.role == 'admin' else url_for('my_complaints', status='Pending') }}">
+          <div class="stat-icon"><i class="bi bi-hourglass-split"></i></div>
+          <div class="stat-info">
+            <div class="s-num">{{ stats.pending }}</div>
+            <div class="s-label">Pending</div>
+          </div>
+        </a>
+        <a class="stat-card notify" href="{{ url_for('admin_complaints', status='Notify') if user.role == 'admin' else url_for('my_complaints', status='Notify') }}">
+          <div class="stat-icon"><i class="bi bi-bell"></i></div>
+          <div class="stat-info">
+            <div class="s-num">{{ stats.notify }}</div>
+            <div class="s-label">Notified</div>
+          </div>
+        </a>
+        <a class="stat-card inprog" href="{{ url_for('admin_complaints', status='In Progress') if user.role == 'admin' else url_for('my_complaints', status='In Progress') }}">
+          <div class="stat-icon"><i class="bi bi-arrow-repeat"></i></div>
+          <div class="stat-info">
+            <div class="s-num">{{ stats.in_progress }}</div>
+            <div class="s-label">In Progress</div>
+          </div>
+        </a>
+        <a class="stat-card resolved" href="{{ url_for('admin_complaints', status='Resolved') if user.role == 'admin' else url_for('my_complaints', status='Resolved') }}">
+          <div class="stat-icon"><i class="bi bi-check-circle-fill"></i></div>
+          <div class="stat-info">
+            <div class="s-num">{{ stats.resolved }}</div>
+            <div class="s-label">Resolved</div>
+          </div>
+        </a>
+      </div>
+
+      <!-- ── RECENT COMPLAINTS TABLE ── -->
+      <div class="content-card">
+        <div class="card-header-bar">
+          <h5><i class="bi bi-clock-history"></i> &nbsp;Recent Complaints</h5>
+          {% if user.role == 'student' %}
+            <a href="{{ url_for('submit_complaint') }}" class="btn-primary-cms btn-sm-cms">
+              <i class="bi bi-plus-lg"></i> Lodge New
+            </a>
+          {% else %}
+            <a href="{{ url_for('admin_complaints') }}" class="btn-secondary-cms btn-sm-cms">
+              View All
+            </a>
+          {% endif %}
+        </div>
+
+        {% if recent %}
+        <table class="tbl">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Subject</th>
+              {% if user.role == 'admin' %}<th>Student</th>{% endif %}
+              <th>Department</th>
+              <th>Priority</th>
+              <th>Status</th>
+              <th>Date</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in recent %}
+            <tr>
+              <td style="color:var(--text-muted)">{{ loop.index }}</td>
+              <td><strong>{{ c.subject }}</strong></td>
+              {% if user.role == 'admin' %}
+                <td>
+                  {% if c.anonymous %}
+                    <span style="color:var(--text-muted);font-style:italic">Anonymous</span>
+                  {% else %}
+                    {{ c.student_name }}
+                  {% endif %}
+                </td>
+              {% endif %}
+              <td>{{ c.dept_name or '—' }}</td>
+              <td>
+                {% if c.priority == 'High' %}
+                  <span class="badge-status badge-high">{{ c.priority }}</span>
+                {% elif c.priority == 'Urgent' %}
+                  <span class="badge-status badge-urgent">{{ c.priority }}</span>
+                {% else %}
+                  <span class="badge-status badge-normal">{{ c.priority }}</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if c.status == 'Pending' %}
+                  <span class="badge-status badge-pending">
+                    <i class="bi bi-hourglass"></i> Pending
+                  </span>
+                {% elif c.status == 'In Progress' %}
+                  <span class="badge-status badge-progress">
+                    <i class="bi bi-arrow-repeat"></i> In Progress
+                  </span>
+                {% elif c.status == 'Notify' %}
+                  <span class="badge-status badge-notify">
+                    <i class="bi bi-bell"></i> Notified
+                  </span>
+                {% else %}
+                  <span class="badge-status badge-resolved">
+                    <i class="bi bi-check-circle"></i> Resolved
+                  </span>
+                {% endif %}
+              </td>
+              <td style="color:var(--text-muted)">
+                {{ c.created_at|format_datetime('%d %b %Y') }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+          <div class="empty-state">
+            <i class="bi bi-inbox"></i>
+            <p>No complaints found. {% if user.role == 'student' %}
+              <a href="{{ url_for('submit_complaint') }}"
+                 style="color:var(--accent)">Lodge your first complaint.</a>
+            {% endif %}</p>
+          </div>
+        {% endif %}
+      </div>
+
+    </div><!-- /page-body -->
+  </div><!-- /main-content -->
+</div><!-- /app-wrapper -->
+
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>

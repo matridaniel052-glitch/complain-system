@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Lodge Complaint — UTAS</title>
+  <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css"/>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+</head>
+<body>
+<div class="app-wrapper">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="brand-logo">
+        <div class="brand-icon">
+          <img src="{{ url_for('static', filename='images/utas_logo.png') }}" alt="UTAS logo" />
+        </div>
+        <div class="brand-text">s
+          <div class="name">UTAS</div>
+          <div class="sub">Complaint System</div>
+        </div>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <a href="{{ url_for('dashboard') }}" class="nav-link">
+        <i class="bi bi-grid-fill"></i> Dashboard
+      </a>
+      <a href="{{ url_for('submit_complaint') }}" class="nav-link active">
+        <i class="bi bi-pencil-square"></i> Lodge Complaint
+      </a>
+      <a href="{{ url_for('my_complaints') }}" class="nav-link">
+        <i class="bi bi-list-ul"></i> My Complaints
+      </a>
+      <a href="{{ url_for('feedback') }}" class="nav-link">
+        <i class="bi bi-chat-text-fill"></i> Feedback
+      </a>
+      <div class="nav-section-label">Account</div>
+      <a href="{{ url_for('settings') }}" class="nav-link">
+        <i class="bi bi-gear-fill"></i> Settings
+      </a>
+    </nav>
+    <div class="sidebar-user">
+      <div class="user-info">
+        <div class="user-avatar">
+          {% if user.get('passport_photo') %}
+            <img src="{{ url_for('static', filename='uploads/passports/' + user.passport_photo) }}" alt="{{ user.fullname }}"/>
+          {% else %}
+            {{ user.fullname[0].upper() }}
+          {% endif %}
+        </div>
+        <div class="user-details">
+          <div class="u-name">{{ user.fullname.split()[0] }}</div>
+          <div class="u-role">{{ user.role }}</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <div class="main-content">
+    <div class="topbar">
+      <button class="sidebar-toggle" onclick="toggleSidebar()" aria-label="Toggle menu">
+        <i class="bi bi-list-ul"></i>
+      </button>
+      <div class="topbar-title">
+        <i class="bi bi-pencil-square" style="color:var(--accent)"></i>
+        Lodge a Complaint
+      </div>
+      <div class="topbar-actions">
+        <span style="font-size:12px;color:var(--text-muted)">{{ user.fullname }}</span>
+        <a href="{{ url_for('logout') }}" class="btn-logout">
+          <i class="bi bi-box-arrow-right"></i> Logout
+        </a>
+      </div>
+    </div>
+
+    <div class="page-body">
+
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for cat, msg in messages %}
+          <div class="flash-msg flash-{{ cat }}">
+            <i class="bi bi-info-circle"></i> {{ msg }}
+          </div>
+        {% endfor %}
+      {% endwith %}
+
+      <div class="page-header">
+        <h3>Submit a New Complaint</h3>
+        <p>We are here to listen. Please describe your concern clearly and upload any supporting letter or document if available.</p>
+      </div>
+
+      <div class="content-card" style="max-width:700px">
+        <div class="card-header-bar">
+          <h5><i class="bi bi-file-earmark-text"></i> &nbsp;Complaint Form</h5>
+        </div>
+        <div class="card-body-pad">
+
+          <!-- Form error (Section 3.13 — validation) -->
+          {% if error %}
+          <div class="alert-error" id="form-error">
+            <i class="bi bi-exclamation-triangle-fill"></i> {{ error }}
+          </div>
+          {% else %}
+          <div class="alert-error" id="form-error" style="display:none"></div>
+          {% endif %}
+
+          <!--
+            Appendix B equivalent:
+            INSERT INTO complaints_table
+              (student_id, department_id, subject, complaint, priority, status, anonymous)
+          -->
+          <form method="POST" action="{{ url_for('submit_complaint') }}"
+                enctype="multipart/form-data"
+                id="complaint-form">
+
+            <div class="form-group">
+              <label class="form-label">Complaint Subject <span style="color:red">*</span></label>
+              <input type="text" name="subject" id="subject"
+                     class="form-input"
+                     placeholder="Brief title of your complaint" required/>
+            </div>
+
+            <div class="form-row-2">
+              <div class="form-group">
+                <label class="form-label">School <span style="color:red">*</span></label>
+                <select name="faculty" id="faculty" class="form-select" required>
+                  <option value="">-- Select your School --</option>
+                  {% for faculty in faculties %}
+                    <option value="{{ faculty }}">{{ faculty }}</option>
+                  {% endfor %}
+                </select>
+                <small class="form-help">Choose the school your programme belongs to.</small>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Programme / Department <span id="program-required-mark" style="color:red">*</span></label>
+                <select name="program" id="program" class="form-select" disabled>
+                  <option value="">-- Select School first --</option>
+                </select>
+                <small class="form-help" id="program-help">Select the specific programme/department you are enrolled in.</small>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Nature of Problem <span style="color:red">*</span></label>
+              <select name="nature_of_problem" id="nature_of_problem" class="form-select" required>
+                <option value="">-- Select the type of problem --</option>
+                {% for item in nature_options %}
+                  <option value="{{ item }}">{{ item }}</option>
+                {% endfor %}
+              </select>
+              <small class="form-help">Choose the main category so the complaint is routed to the appropriate office.</small>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Department / Office <span style="color:red">*</span></label>
+              <select name="department_id" id="department_id" class="form-select" required>
+                <option value="">-- Select the department or office --</option>
+                {% for d in depts %}
+                  <option value="{{ d.id }}">{{ d.name }}</option>
+                {% endfor %}
+              </select>
+              <small class="form-help">E.g. Security, Examinations, Academic Affairs — this decides which office handles and resolves your complaint.</small>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Complaint Details <span style="color:red">*</span></label>
+              <textarea name="complaint" id="complaint"
+                        class="form-textarea"
+                        placeholder="Describe your complaint in full detail..."
+                        required></textarea>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Attach Supporting Letter</label>
+              <input type="file" name="attachment" class="form-input"
+                     accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"/>
+              <small class="form-help">Upload a supporting letter or scanned document to help the admin understand your issue. Max 5MB.</small>
+            </div>
+
+            <div class="form-group">
+              <label class="form-check">
+                <input type="checkbox" name="anonymous" value="1"/>
+                Submit anonymously (your name will not be shown to the admin)
+              </label>
+            </div>
+
+            <div style="display:flex;gap:10px;margin-top:8px">
+              <button type="submit" class="btn-primary-cms">
+                <i class="bi bi-send-fill"></i> Submit Complaint
+              </button>
+              <a href="{{ url_for('dashboard') }}" class="btn-secondary-cms">
+                Cancel
+              </a>
+            </div>
+
+          </form>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+<script id="schools-data" type="application/json">{{ schools_json|safe }}</script>
+<script>
+  (function () {
+    var schools = JSON.parse(document.getElementById('schools-data').textContent);
+    var facultySelect = document.getElementById('faculty');
+    var programSelect = document.getElementById('program');
+    var programHelp = document.getElementById('program-help');
+    var programRequiredMark = document.getElementById('program-required-mark');
+
+    facultySelect.addEventListener('change', function () {
+      var programs = schools[facultySelect.value] || [];
+      programSelect.innerHTML = '';
+
+      if (!facultySelect.value) {
+        programSelect.disabled = true;
+        programSelect.required = false;
+        programRequiredMark.style.display = 'none';
+        programSelect.appendChild(new Option('-- Select School first --', ''));
+        programHelp.textContent = 'Select the specific programme/department you are enrolled in.';
+        return;
+      }
+
+      if (programs.length === 0) {
+        programSelect.disabled = true;
+        programSelect.required = false;
+        programRequiredMark.style.display = 'none';
+        programSelect.appendChild(new Option('-- No programmes listed for this school --', ''));
+        programHelp.textContent = 'This school has no individual programmes listed.';
+        return;
+      }
+
+      programSelect.disabled = false;
+      programSelect.required = true;
+      programRequiredMark.style.display = '';
+      programSelect.appendChild(new Option('-- Select your Programme/Department (' + programs.length + ') --', ''));
+      programs.forEach(function (name) {
+        programSelect.appendChild(new Option(name, name));
+      });
+      programHelp.textContent = programs.length + ' programme(s) available in this school.';
+    });
+  })();
+</script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
